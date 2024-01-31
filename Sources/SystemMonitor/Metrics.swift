@@ -1,31 +1,10 @@
 import Darwin
 import Foundation
 
-private let _mem_layout_int = MemoryLayout<integer_t>.size
-private let _n_host_basic_info: mach_msg_type_number_t = UInt32(MemoryLayout<host_basic_info_data_t>.size / _mem_layout_int)
-private let _n_host_load_info: mach_msg_type_number_t = UInt32(MemoryLayout<host_load_info_data_t>.size / _mem_layout_int)
-private let _n_host_cpu_load_info: mach_msg_type_number_t = UInt32(MemoryLayout<host_cpu_load_info_data_t>.size / _mem_layout_int)
-private let _n_host_vm_info64: mach_msg_type_number_t = UInt32(MemoryLayout<vm_statistics64_data_t>.size / _mem_layout_int)
-private let _n_host_sched_info: mach_msg_type_number_t = UInt32(MemoryLayout<host_sched_info_data_t>.size / _mem_layout_int)
-private let _n_processor_set_load_info: mach_msg_type_number_t = UInt32(MemoryLayout<processor_set_load_info_data_t>.size / MemoryLayout<natural_t>.size)
-
-public struct CPULoadSnap {
-    let user: Double
-    let system: Double
-    let idle: Double
-    let nice: Double
-}
-
-extension CPULoadSnap: CustomStringConvertible {
-    public var description: String {
-        String(
-            format: "[cpu] user: %.2f%% | system: %.2f%% | idle: %.2f%% | nice: %.2f%%",
-            user * 100, system * 100, idle * 100, nice * 100
-        )
-    }
-}
-
+/// A snapshot of basic system information.
 public struct Metrics {
+    private static let megabyte = 1048576.0
+
     private var prevCPU = host_cpu_load_info()
     
     public init() {
@@ -52,4 +31,47 @@ public struct Metrics {
         prevCPU = data
         return CPULoadSnap(user: u / t, system: s / t, idle: i / t, nice: n / t)
     }
+
+    public func memory() -> MemorySnap {
+        var size = mach_msg_type_number_t(_n_host_vm_info64)
+        let hostInfo = vm_statistics64_t.allocate(capacity: 1)
+        _ = hostInfo.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
+            host_statistics64(
+                mach_host_self(),
+                HOST_VM_INFO64,
+                $0,
+                &size
+            )
+        }
+        let data = hostInfo.move()
+        hostInfo.deallocate()
+        let compressed = Double(data.compressor_page_count) * Double(vm_kernel_page_size) / Self.megabyte
+        return MemorySnap(
+            active: Double(data.active_count) * Double(vm_kernel_page_size) / Self.megabyte,
+            inactive: Double(data.inactive_count) * Double(vm_kernel_page_size) / Self.megabyte,
+            wired: Double(data.wire_count) * Double(vm_kernel_page_size) / Self.megabyte,
+            free: Double(data.free_count) * Double(vm_kernel_page_size) / Self.megabyte,
+            compressed: Double(compressed)
+        )
+    }
+
+    public func basicInfo() -> BasicInfoSnap {
+        var size = mach_msg_type_number_t(_n_host_basic_info)
+        let hostInfo = host_basic_info_t.allocate(capacity: 1)
+        _ = hostInfo.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
+            host_info(
+                mach_host_self(),
+                HOST_BASIC_INFO,
+                $0,
+                &size
+            )
+        }
+        let data = hostInfo.move()
+        hostInfo.deallocate()
+        return BasicInfoSnap(
+            cpuCount: Int(data.logical_cpu_max),
+            physicalMemory: Double(data.max_mem) / Self.megabyte
+        )
+    }
+
 }
