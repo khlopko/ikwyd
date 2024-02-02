@@ -5,9 +5,30 @@ import Foundation
 public struct Metrics {
     private static let megabyte = 1048576.0
 
+    private let host = mach_host_self()
     private var prevCPU = host_cpu_load_info()
     
     public init() {
+    }
+
+    public func avg_load() -> [Double] {
+        var size = _n_host_load_info
+        let hostInfo = host_load_info_t.allocate(capacity: 1)
+        _ = hostInfo.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
+            host_statistics(
+                host,
+                HOST_LOAD_INFO,
+                $0,
+                &size
+            )
+        }
+        let data = hostInfo.move().avenrun
+        hostInfo.deallocate()
+        return [
+            Double(data.0) / Double(LOAD_SCALE),
+            Double(data.1) / Double(LOAD_SCALE),
+            Double(data.2) / Double(LOAD_SCALE)
+        ]
     }
 
     public mutating func cpu() -> CPULoadSnap {
@@ -15,7 +36,7 @@ public struct Metrics {
         let hostInfo = host_cpu_load_info_t.allocate(capacity: 1)
         _ = hostInfo.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
             host_statistics(
-                mach_host_self(),
+                host,
                 HOST_CPU_LOAD_INFO,
                 $0,
                 &size
@@ -37,7 +58,7 @@ public struct Metrics {
         let hostInfo = vm_statistics64_t.allocate(capacity: 1)
         _ = hostInfo.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
             host_statistics64(
-                mach_host_self(),
+                host,
                 HOST_VM_INFO64,
                 $0,
                 &size
@@ -60,7 +81,7 @@ public struct Metrics {
         let hostInfo = host_basic_info_t.allocate(capacity: 1)
         _ = hostInfo.withMemoryRebound(to: integer_t.self, capacity: Int(size)) {
             host_info(
-                mach_host_self(),
+                host,
                 HOST_BASIC_INFO,
                 $0,
                 &size
