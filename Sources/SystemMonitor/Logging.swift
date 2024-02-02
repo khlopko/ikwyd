@@ -4,14 +4,15 @@ public actor Logger {
 
     private var buffer = Data()
     private let iso8601 = ISO8601DateFormatter()
-    private let limit = 30
+    private let limit: Int
     private let packetSize = 10
     private var uploadTrigger = 0
     private var metrics = Metrics()
     private let outputURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath.appending("/logs.bin"))
     private let session = URLSession.shared
 
-    public init() {
+    public init(limit: Int = 1024) {
+        self.limit = limit
     }
 
     public func start() async throws {
@@ -27,7 +28,7 @@ public actor Logger {
         append(UInt8(cpu.user * 100))
         let mem = metrics.memory()
         append(UInt16(mem.used))
-        if uploadTrigger == 6 {
+        if uploadTrigger == limit * 3 / packetSize {
             uploadTrigger = 0
             try await upload()
         } else {
