@@ -10,10 +10,12 @@ public actor Logger {
     private var metrics = Metrics()
     private let outputURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath.appending("/logs.bin"))
     private let session = URLSession.shared
+    private let address: String
     private let apiKey: String
     private let nanosecondsInterval: TimeInterval
 
-    public init(apiKey: String, nanosecondsInterval: TimeInterval = 2e9, limit: Int = 1024) {
+    public init(address: String, apiKey: String, nanosecondsInterval: TimeInterval = 2e9, limit: Int = 1024) {
+        self.address = address
         self.apiKey = apiKey
         self.nanosecondsInterval = nanosecondsInterval
         self.limit = limit
@@ -59,7 +61,7 @@ public actor Logger {
     }
 
     private func upload() async throws {
-        var request = URLRequest(url: URL(string: "http://localhost:8080/rotterdam")!)
+        var request = URLRequest(url: URL(string: "\(address)/rotterdam")!)
         request.httpMethod = "POST"
         request.httpBody = try Data(contentsOf: outputURL)
         request.setValue(apiKey, forHTTPHeaderField: "Authorization")
