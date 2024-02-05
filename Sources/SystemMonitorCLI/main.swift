@@ -18,7 +18,7 @@ struct SystemMonitorCLI {
         }
         */
         loggingTask = Task.detached {
-            let logger = Logger()
+            let logger = Logger(limit: 30)
             while true {
                 try await logger.start()
             }

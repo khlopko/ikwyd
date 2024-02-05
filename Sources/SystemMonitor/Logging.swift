@@ -10,12 +10,22 @@ public actor Logger {
     private var metrics = Metrics()
     private let outputURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath.appending("/logs.bin"))
     private let session = URLSession.shared
+    private let apiKey: String
+    private let nanosecondsInterval: TimeInterval
 
-    public init(limit: Int = 1024) {
+    public init(apiKey: String, nanosecondsInterval: TimeInterval = 2e9, limit: Int = 1024) {
+        self.apiKey = apiKey
+        self.nanosecondsInterval = nanosecondsInterval
         self.limit = limit
     }
 
     public func start() async throws {
+        while true {
+            try await iter()
+        }
+    }
+
+    public func iter() async throws {
         try flushIfNeeded()
         let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date())
         append(UInt8(components.day!))
@@ -34,7 +44,7 @@ public actor Logger {
         } else {
             uploadTrigger += 1
         }
-        try await Task.sleep(nanoseconds: UInt64(2e9))
+        try await Task.sleep(nanoseconds: UInt64(nanosecondsInterval))
     }
 
     private func append<T>(_ value: T) {
@@ -52,6 +62,7 @@ public actor Logger {
         var request = URLRequest(url: URL(string: "http://localhost:8080/rotterdam")!)
         request.httpMethod = "POST"
         request.httpBody = try Data(contentsOf: outputURL)
+        request.setValue(apiKey, forHTTPHeaderField: "Authorization")
         let (_, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? -1
         print("Upload completed with status code: \(status)")
