@@ -1,3 +1,4 @@
+import Foundation
 import SystemMonitor
 
 @main
@@ -18,7 +19,7 @@ struct SystemMonitorCLI {
         }
         */
         loggingTask = Task.detached {
-            let logger = Logger(apiKey: "bd7ae4b74aaefc6ebc66e1680fca0c36df7575a6d0d80ffcf1d9c0aeb79dccac", limit: 30)
+            let logger = Logger(tmpURL: URL(fileURLWithPath: FileManager.default.currentDirectoryPath), apiKey: "bd7ae4b74aaefc6ebc66e1680fca0c36df7575a6d0d80ffcf1d9c0aeb79dccac", limit: 30)
             try await logger.start()
         }
         while true {

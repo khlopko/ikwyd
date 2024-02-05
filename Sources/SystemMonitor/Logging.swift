@@ -8,13 +8,14 @@ public actor Logger {
     private let packetSize = 10
     private var uploadTrigger = 0
     private var metrics = Metrics()
-    private let outputURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath.appending("/logs.bin"))
+    private let outputURL: URL
     private let session = URLSession.shared
     private let address: String
     private let apiKey: String
     private let nanosecondsInterval: TimeInterval
 
-    public init(address: String, apiKey: String, nanosecondsInterval: TimeInterval = 2e9, limit: Int = 1024) {
+    public init(tmpURL: URL, address: String, apiKey: String, nanosecondsInterval: TimeInterval = 2e9, limit: Int = 1024) {
+        self.outputURL = tmpURL.appendingPathComponent("logs.bin")
         self.address = address
         self.apiKey = apiKey
         self.nanosecondsInterval = nanosecondsInterval
