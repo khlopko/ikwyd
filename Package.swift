@@ -13,8 +13,12 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "SystemMonitorCLI",
-            dependencies: [.target(name: "SystemMonitor")]
+            dependencies: [.target(name: "SystemMonitor")], 
+            path: "swift-monitor/cli"
         ),
-        .target(name: "SystemMonitor")
+        .target(
+            name: "SystemMonitor",
+            path: "swift-monitor/lib"
+        )
     ]
 )
